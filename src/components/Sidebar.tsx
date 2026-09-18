@@ -10,19 +10,36 @@ const navItems = [
   { path: '/servicios', label: 'Servicios AWS', icon: '☁️' },
 ];
 
-export default function Sidebar() {
+interface SidebarProps {
+  onCloseMobile?: () => void;
+}
+
+export default function Sidebar({ onCloseMobile }: SidebarProps) {
   return (
-    <aside className="w-64 bg-[#0F172A] min-h-screen text-white flex flex-col justify-between p-4 flex-shrink-0">
+    <aside className="w-64 bg-[#0F172A] h-full text-white flex flex-col justify-between p-4 flex-shrink-0">
       <div>
         {/* Encabezado Logo */}
-        <div className="flex items-center space-x-3 px-3 py-4 mb-6 border-b border-slate-800">
-          <div className="w-9 h-9 rounded-xl bg-[#2563EB] flex items-center justify-center text-lg font-bold">
-            ⚡
+        <div className="flex items-center justify-between px-3 py-4 mb-6 border-b border-slate-800">
+          <div className="flex items-center space-x-3">
+            <div className="w-9 h-9 rounded-xl bg-[#2563EB] flex items-center justify-center text-lg font-bold">
+              ⚡
+            </div>
+            <div>
+              <h1 className="font-bold text-base tracking-wide text-white">CLOUD PLATFORM</h1>
+              <p className="text-[11px] text-[#64748B]">Enterprise Console</p>
+            </div>
           </div>
-          <div>
-            <h1 className="font-bold text-base tracking-wide text-white">CLOUD PLATFORM</h1>
-            <p className="text-[11px] text-[#64748B]">Enterprise Console</p>
-          </div>
+
+          {/* Botón cerrar para móvil */}
+          {onCloseMobile && (
+            <button
+              onClick={onCloseMobile}
+              className="lg:hidden text-slate-400 hover:text-white p-1"
+              aria-label="Cerrar menú"
+            >
+              ✕
+            </button>
+          )}
         </div>
 
         {/* Links de Navegación */}
@@ -31,6 +48,7 @@ export default function Sidebar() {
             <NavLink
               key={item.path}
               to={item.path}
+              onClick={onCloseMobile}
               className={({ isActive }) =>
                 `flex items-center space-x-3 px-3.5 py-3 rounded-xl text-xs font-semibold transition-all ${
                   isActive
@@ -47,7 +65,7 @@ export default function Sidebar() {
       </div>
 
       {/* Footer del Sidebar */}
-      <div className="p-3 bg-slate-900/60 rounded-xl border border-slate-800/80">
+      <div className="p-3 bg-slate-900/60 rounded-xl border border-slate-800/80 mt-6">
         <div className="flex items-center space-x-2">
           <span className="w-2 h-2 rounded-full bg-[#16A34A] animate-pulse"></span>
           <span className="text-[11px] text-[#64748B] font-medium">Estado: Operativo</span>
