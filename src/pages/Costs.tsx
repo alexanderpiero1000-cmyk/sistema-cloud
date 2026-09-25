@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import StatCard from '../components/StatCard';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
@@ -12,18 +12,18 @@ interface CostItem {
   annualCost: number;
 }
 
-// Mapeo exacto de las tarifas por servicio según las opciones del select
 const serviceRates: Record<string, number> = {
   'EC2 (Calcular t3.medium)': 0.0416,
   'RDS (Base de datos db.t3.medium)': 0.0680,
   'S3 (Almacenamiento por GB)': 0.0230,
-  'Lambda (Solicitudes / Ejecución)': 0.0002,
+  'IAM (Gestión de Identidades)': 0.0000,
+  'VPC (Red Privada Virtual)': 0.0050,
+  'Route 53 (Gestión DNS)': 0.0015,
   'CloudFront (Transferencia CDN GB)': 0.0850,
 };
 
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#6366f1'];
 
-// Función para renderizar la etiqueta con línea y punto en el gráfico
 const renderCustomizedLabel = (props: any) => {
   const { cx, cy, midAngle, outerRadius, value, name, percent } = props;
   const RADIAN = Math.PI / 180;
@@ -74,37 +74,54 @@ const renderCustomizedLabel = (props: any) => {
 };
 
 export default function Costs() {
-  const [items, setItems] = useState<CostItem[]>([
-    {
-      id: '1',
-      service: 'EC2 (Calcular t3.medium)',
-      quantity: 2,
-      hours: 730,
-      ratePerHour: 0.0416,
-      monthlyCost: 60.74,
-      annualCost: 728.83,
-    },
-    {
-      id: '2',
-      service: 'RDS (Base de datos db.t3.medium)',
-      quantity: 1,
-      hours: 730,
-      ratePerHour: 0.068,
-      monthlyCost: 49.64,
-      annualCost: 595.68,
-    },
-  ]);
+  const [items, setItems] = useState<CostItem[]>(() => {
+    const saved = localStorage.getItem('cloud_cost_items');
+    return saved
+      ? JSON.parse(saved)
+      : [
+          {
+            id: '1',
+            service: 'EC2 (Calcular t3.medium)',
+            quantity: 2,
+            hours: 730,
+            ratePerHour: 0.0416,
+            monthlyCost: 60.74,
+            annualCost: 728.83,
+          },
+          {
+            id: '2',
+            service: 'RDS (Base de datos db.t3.medium)',
+            quantity: 1,
+            hours: 730,
+            ratePerHour: 0.068,
+            monthlyCost: 49.64,
+            annualCost: 595.68,
+          },
+        ];
+  });
 
   const [selectedService, setSelectedService] = useState('EC2 (Calcular t3.medium)');
   const [quantity, setQuantity] = useState<number | ''>(1);
   const [hours, setHours] = useState<number | ''>(730);
 
-  // Obtener la tarifa correspondiente al servicio seleccionado actualmente
+  const saveCostItems = (newItems: CostItem[]) => {
+    setItems(newItems);
+    localStorage.setItem('cloud_cost_items', JSON.stringify(newItems));
+  };
+
+  useEffect(() => {
+    const syncData = () => {
+      const saved = localStorage.getItem('cloud_cost_items');
+      if (saved) setItems(JSON.parse(saved));
+    };
+    window.addEventListener('storage', syncData);
+    return () => window.removeEventListener('storage', syncData);
+  }, []);
+
   const currentRate = serviceRates[selectedService] ?? 0;
   const numericQuantity = typeof quantity === 'number' ? quantity : 0;
   const numericHours = typeof hours === 'number' ? hours : 0;
 
-  // Cálculo en tiempo real
   const calculatedMonthlyCost = (numericQuantity * numericHours * currentRate).toFixed(2);
 
   const handleAddItem = (e: React.FormEvent) => {
@@ -124,34 +141,34 @@ export default function Costs() {
       annualCost: annual,
     };
 
-    setItems([...items, newItem]);
+    saveCostItems([...items, newItem]);
   };
 
   const handleUpdateItem = (id: string, field: 'quantity' | 'hours', value: number) => {
     const safeValue = value < 1 ? 1 : value;
-    setItems(
-      items.map((item) => {
-        if (item.id === id) {
-          const newQty = field === 'quantity' ? safeValue : item.quantity;
-          const newHours = field === 'hours' ? safeValue : item.hours;
-          const monthly = Number((newQty * newHours * item.ratePerHour).toFixed(2));
-          const annual = Number((monthly * 12).toFixed(2));
+    const updated = items.map((item) => {
+      if (item.id === id) {
+        const newQty = field === 'quantity' ? safeValue : item.quantity;
+        const newHours = field === 'hours' ? safeValue : item.hours;
+        const monthly = Number((newQty * newHours * item.ratePerHour).toFixed(2));
+        const annual = Number((monthly * 12).toFixed(2));
 
-          return {
-            ...item,
-            quantity: newQty,
-            hours: newHours,
-            monthlyCost: monthly,
-            annualCost: annual,
-          };
-        }
-        return item;
-      })
-    );
+        return {
+          ...item,
+          quantity: newQty,
+          hours: newHours,
+          monthlyCost: monthly,
+          annualCost: annual,
+        };
+      }
+      return item;
+    });
+    saveCostItems(updated);
   };
 
   const removeItem = (id: string) => {
-    setItems(items.filter((item) => item.id !== id));
+    const updated = items.filter((item) => item.id !== id);
+    saveCostItems(updated);
   };
 
   const totalMonthly = items.reduce((acc, curr) => acc + curr.monthlyCost, 0);
@@ -180,16 +197,13 @@ export default function Costs() {
         </p>
       </div>
 
-      {/* Tarjetas Superiores */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard title="ITEMS ESTIMADOS" value={`${items.length} Recurso(s)`} />
         <StatCard title="COSTO MENSUAL TOTAL" value={`$${totalMonthly.toFixed(2)} USD`} />
         <StatCard title="COSTO ANUAL PROYECTADO" value={`$${totalAnnual.toFixed(2)} USD`} />
       </div>
 
-      {/* Formulario y Gráfico */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Formulario de Simulación */}
         <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
           <h2 className="text-lg font-semibold text-slate-800 mb-4">Recurso Simular</h2>
           <form onSubmit={handleAddItem} className="space-y-4">
@@ -239,7 +253,6 @@ export default function Costs() {
               />
             </div>
 
-            {/* Recuadro de costos con actualización dinámica */}
             <div className="p-3 bg-slate-50/80 rounded-xl space-y-2 text-xs">
               <div className="flex justify-between items-center text-slate-500">
                 <span>Costo estimado / Hora:</span>
@@ -264,7 +277,6 @@ export default function Costs() {
           </form>
         </div>
 
-        {/* Gráfico de Distribución */}
         <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
           <div>
             <h3 className="font-semibold text-slate-800">Distribución de Costos</h3>
@@ -302,7 +314,6 @@ export default function Costs() {
         </div>
       </div>
 
-      {/* Tabla Desglose */}
       <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <h2 className="text-lg font-semibold text-slate-800 mb-4">Desglose de Costos Calculados</h2>
         <div className="overflow-x-auto">

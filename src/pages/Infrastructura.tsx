@@ -1,24 +1,29 @@
 import React, { useState } from 'react';
+import StatCard from '../components/StatCard';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import L from 'leaflet';
 
-interface RegionData {
-  id: string;
-  code: string;
-  name: string;
-  awsCode: string;
-  location: string;
-  azCount: number;
-  status: 'Operativo' | 'Mantenimiento';
-  services: string[];
-}
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 
-const REGIONS: RegionData[] = [
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconUrl: markerIcon,
+  iconRetinaUrl: markerIcon2x,
+  shadowUrl: markerShadow,
+});
+
+// Estructura de regiones con coordenadas geográficas
+const regionsData = [
   {
     id: 'us-east-1',
     code: 'US',
     name: 'EE. UU. Este (Norte de Virginia)',
-    awsCode: 'us-east-1',
     location: 'Norteamérica / Estados Unidos',
-    azCount: 6,
+    lat: 38.0339,
+    lng: -78.5079,
+    az: '6 AZ',
     status: 'Operativo',
     services: ['EC2', 'S3', 'RDS', 'Lambda', 'CloudFront', 'VPC', 'DynamoDB'],
   },
@@ -26,9 +31,10 @@ const REGIONS: RegionData[] = [
     id: 'us-west-2',
     code: 'US',
     name: 'EE. UU. Oeste (Oregón)',
-    awsCode: 'us-west-2',
     location: 'Norteamérica / Estados Unidos',
-    azCount: 4,
+    lat: 45.5152,
+    lng: -122.6784,
+    az: '4 AZ',
     status: 'Operativo',
     services: ['EC2', 'S3', 'RDS', 'Lambda', 'EKS'],
   },
@@ -36,52 +42,48 @@ const REGIONS: RegionData[] = [
     id: 'sa-east-1',
     code: 'BR',
     name: 'Sudamérica (São Paulo)',
-    awsCode: 'sa-east-1',
     location: 'Sudamérica / Brasil',
-    azCount: 3,
+    lat: -23.5505,
+    lng: -46.6333,
+    az: '3 AZ',
     status: 'Operativo',
-    services: ['EC2', 'S3', 'RDS', 'VPC'],
+    services: ['EC2', 'S3', 'RDS', 'Lambda'],
   },
   {
     id: 'eu-west-1',
     code: 'IE',
     name: 'Europa (Irlanda)',
-    awsCode: 'eu-west-1',
     location: 'Europa / Irlanda',
-    azCount: 3,
+    lat: 53.3498,
+    lng: -6.2603,
+    az: '3 AZ',
     status: 'Operativo',
-    services: ['EC2', 'S3', 'RDS', 'Lambda', 'ECS'],
+    services: ['EC2', 'S3', 'RDS', 'CloudFront', 'VPC'],
   },
   {
     id: 'ap-northeast-1',
     code: 'JP',
     name: 'Asia Pacífico (Tokio)',
-    awsCode: 'ap-northeast-1',
     location: 'Asia / Japón',
-    azCount: 4,
+    lat: 35.6762,
+    lng: 139.6503,
+    az: '4 AZ',
     status: 'Mantenimiento',
-    services: ['EC2', 'S3', 'DynamoDB'],
+    services: ['EC2', 'S3', 'RDS'],
   },
 ];
 
-export default function GlobalInfrastructure() {
+export default function Infraestructura() {
   const [filter, setFilter] = useState<'Todas' | 'Operativas' | 'Mantenimiento'>('Todas');
 
-  // Cálculos dinámicos
-  const totalRegions = REGIONS.length;
-  const totalAZs = REGIONS.reduce((acc, curr) => acc + curr.azCount, 0);
-  const optimalRegions = REGIONS.filter((r) => r.status === 'Operativo').length;
-
-  // Filtrado de lista
-  const filteredRegions = REGIONS.filter((region) => {
+  const filteredRegions = regionsData.filter((region) => {
     if (filter === 'Operativas') return region.status === 'Operativo';
     if (filter === 'Mantenimiento') return region.status === 'Mantenimiento';
     return true;
   });
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto p-2 sm:p-6">
-      {/* Encabezado */}
+    <div className="space-y-8 max-w-7xl mx-auto">
       <div>
         <span className="text-xs font-bold text-blue-600 uppercase tracking-wider">
           Módulo 4
@@ -92,119 +94,121 @@ export default function GlobalInfrastructure() {
         </p>
       </div>
 
-      {/* Tarjetas resumen métrico */}
+      {/* Tarjetas Superiores */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-            REGIONES DESPLEGADAS
+        <StatCard title="REGIONES DESPLEGADAS" value="5 Regiones" />
+        <StatCard title="ZONAS DE DISPONIBILIDAD" value="20 AZ en total" />
+        <StatCard title="ESTADO GLOBAL" value="4/5 Óptimas" />
+      </div>
+
+      {/* Mapa Mundial de la Infraestructura */}
+      <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold text-slate-800">Mapa Mundial de Regiones</h2>
+          <p className="text-xs text-slate-400">
+            Ubicación geográfica de los centros de datos y estado activo de los nodos globales.
           </p>
-          <p className="text-2xl font-bold text-slate-900 mt-2">{totalRegions} Regiones</p>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-            ZONAS DE DISPONIBILIDAD
-          </p>
-          <p className="text-2xl font-bold text-slate-900 mt-2">{totalAZs} AZ en total</p>
-        </div>
-
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-            ESTADO GLOBAL
-          </p>
-          <p className="text-2xl font-bold text-slate-900 mt-2">
-            {optimalRegions}/{totalRegions} Óptimas
-          </p>
+        <div className="h-[400px] w-full rounded-2xl overflow-hidden border border-slate-200 z-0">
+          <MapContainer center={[20, 0]} zoom={2} scrollWheelZoom={true} className="h-full w-full">
+            <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+            {filteredRegions.map((region) => (
+              <Marker key={region.id} position={[region.lat, region.lng]}>
+                <Popup>
+                  <div className="text-xs space-y-1">
+                    <span className="font-bold block text-sm text-slate-800">{region.name}</span>
+                    <p className="text-slate-500">{region.location}</p>
+                    <p><strong>AZ:</strong> {region.az}</p>
+                    <p>
+                      <strong>Estado:</strong>{' '}
+                      <span className={region.status === 'Operativo' ? 'text-green-600 font-bold' : 'text-amber-600 font-bold'}>
+                        {region.status}
+                      </span>
+                    </p>
+                  </div>
+                </Popup>
+              </Marker>
+            ))}
+          </MapContainer>
         </div>
       </div>
 
-      {/* Control de Filtros */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h2 className="text-base font-bold text-slate-800">Regiones de Infraestructura</h2>
-        <div className="flex bg-slate-100 p-1 rounded-xl text-xs font-semibold">
-          {(['Todas', 'Operativas', 'Mantenimiento'] as const).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setFilter(tab)}
-              className={`px-4 py-1.5 rounded-lg transition-all ${
-                filter === tab
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              {tab}
-            </button>
+      {/* Sección de Filtros y Lista de Regiones */}
+      <div className="space-y-4">
+        <div className="flex justify-between items-center flex-wrap gap-2">
+          <h2 className="text-lg font-semibold text-slate-800">Regiones de Infraestructura</h2>
+          <div className="bg-slate-100 p-1 rounded-xl flex space-x-1 text-xs font-semibold">
+            {(['Todas', 'Operativas', 'Mantenimiento'] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setFilter(tab)}
+                className={`px-3 py-1.5 rounded-lg transition-colors ${
+                  filter === tab
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Tarjetas de Regiones */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {filteredRegions.map((region) => (
+            <div key={region.id} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-4">
+              <div className="flex items-start justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center font-bold text-slate-700 text-sm">
+                    {region.code}
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-slate-800 text-sm">{region.name}</h3>
+                    <p className="text-xs text-slate-400">{region.id}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-xs space-y-2 text-slate-600 border-t border-slate-50 pt-3">
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Ubicación:</span>
+                  <span className="font-medium text-slate-700">{region.location}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Zonas de Disponibilidad:</span>
+                  <span className="font-medium text-slate-700">{region.az}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400">Estado del Sistema:</span>
+                  <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                    region.status === 'Operativo' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'
+                  }`}>
+                    • {region.status}
+                  </span>
+                </div>
+              </div>
+
+              {/* Servicios Desplegados */}
+              <div className="border-t border-slate-50 pt-3">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
+                  SERVICIOS DESPLEGADOS ({region.services.length})
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {region.services.map((srv) => (
+                    <span key={srv} className="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-medium">
+                      {srv}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
           ))}
         </div>
-      </div>
-
-      {/* Rejilla de tarjetas de Región */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredRegions.map((region) => (
-          <div
-            key={region.id}
-            className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between"
-          >
-            <div>
-              {/* Título de la Región y código AWS */}
-              <div className="flex items-start gap-3">
-                <span className="text-xl font-bold text-slate-700 font-mono bg-slate-100 px-2 py-0.5 rounded-md">
-                  {region.code}
-                </span>
-                <div>
-                  <h3 className="font-bold text-slate-900 text-sm">{region.name}</h3>
-                  <p className="text-xs text-slate-400 font-mono">{region.awsCode}</p>
-                </div>
-              </div>
-
-              {/* Información detallada */}
-              <div className="mt-5 space-y-2 text-xs">
-                <div className="flex justify-between items-center text-slate-500">
-                  <span>Ubicación:</span>
-                  <span className="font-semibold text-slate-700">{region.location}</span>
-                </div>
-                <div className="flex justify-between items-center text-slate-500">
-                  <span>Zonas de Disponibilidad:</span>
-                  <span className="font-semibold text-slate-700">{region.azCount} AZ</span>
-                </div>
-                <div className="flex justify-between items-center text-slate-500">
-                  <span>Estado del Sistema:</span>
-                  <span
-                    className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold flex items-center gap-1.5 ${
-                      region.status === 'Operativo'
-                        ? 'bg-emerald-50 text-emerald-600'
-                        : 'bg-amber-50 text-amber-600'
-                    }`}
-                  >
-                    <span
-                      className={`w-1.5 h-1.5 rounded-full ${
-                        region.status === 'Operativo' ? 'bg-emerald-500' : 'bg-amber-500'
-                      }`}
-                    />
-                    {region.status}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Badges de Servicios Desplegados */}
-            <div className="mt-6 pt-4 border-t border-slate-100">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2.5">
-                SERVICIOS DESPLEGADOS ({region.services.length})
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {region.services.map((service) => (
-                  <span
-                    key={service}
-                    className="px-2.5 py-1 bg-slate-50 border border-slate-200/60 rounded-lg text-xs font-medium text-slate-600 shadow-2xs"
-                  >
-                    {service}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-        ))}
       </div>
     </div>
   );

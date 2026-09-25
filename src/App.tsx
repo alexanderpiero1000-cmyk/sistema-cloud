@@ -7,6 +7,7 @@ import Infraestructura from './pages/Infrastructura';
 import Security from './pages/Security';
 import Network from './pages/Network';
 import Services from './pages/Services';
+import GPSLive from './pages/GPSLive';
 
 export default function App() {
   return (
@@ -20,6 +21,7 @@ export default function App() {
           <Route path="/seguridad" element={<Security />} />
           <Route path="/red" element={<Network />} />
           <Route path="/servicios" element={<Services />} />
+          <Route path="/gps" element={<GPSLive />} />
         </Routes>
       </Layout>
     </BrowserRouter>

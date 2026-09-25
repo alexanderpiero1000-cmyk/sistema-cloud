@@ -8,6 +8,7 @@ const navItems = [
   { path: '/seguridad', label: 'Seguridad', icon: '🛡️' },
   { path: '/red', label: 'Arquitectura de Red', icon: '🔀' },
   { path: '/servicios', label: 'Servicios AWS', icon: '☁️' },
+  { path: '/gps', label: 'Auditoría', icon: '📍' }, // <-- CAMBIADO A "Auditoría"
 ];
 
 interface SidebarProps {

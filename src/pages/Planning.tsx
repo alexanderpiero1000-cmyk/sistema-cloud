@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface CloudProposal {
   id: string;
@@ -15,17 +15,28 @@ interface CloudProposal {
 const availableServices = ['EC2', 'S3', 'RDS', 'Lambda', 'DynamoDB', 'CloudFront', 'VPC', 'ECS'];
 
 export default function Planning() {
-  const [proposals, setProposals] = useState<CloudProposal[]>([]);
+  const [proposals, setProposals] = useState<CloudProposal[]>(() => {
+    const saved = localStorage.getItem('cloud_proposals');
+    return saved ? JSON.parse(saved) : [];
+  });
+
   const [formData, setFormData] = useState({
     name: '',
     appType: 'Web Monolítica',
     description: '',
-    region: 'us-east-1 (N. Virginia)',
+    region: 'sa-east-1 (São Paulo) — ~3,455 km',
     users: '',
     availability: '99.9% (Single-AZ)',
     services: [] as string[],
     goal: 'Migración Re-hosting (Lift & Shift)',
   });
+
+  // Guardar en localStorage y sincronizar eventos
+  const saveProposals = (newProposals: CloudProposal[]) => {
+    setProposals(newProposals);
+    localStorage.setItem('cloud_proposals', JSON.stringify(newProposals));
+    window.dispatchEvent(new Event('storage'));
+  };
 
   const handleServiceToggle = (service: string) => {
     setFormData((prev) => ({
@@ -45,17 +56,55 @@ export default function Planning() {
       id: Date.now().toString(),
     };
 
-    setProposals([newProposal, ...proposals]);
+    const updated = [newProposal, ...proposals];
+    saveProposals(updated);
+
+    // Opcional: Agregar servicios de la propuesta a la calculadora de costos
+    const existingCostItems = JSON.parse(localStorage.getItem('cloud_cost_items') || '[]');
+    const serviceRates: Record<string, { rate: number; fullName: string }> = {
+      EC2: { rate: 0.0416, fullName: 'EC2 (Calcular t3.medium)' },
+      RDS: { rate: 0.0680, fullName: 'RDS (Base de datos db.t3.medium)' },
+      S3: { rate: 0.0230, fullName: 'S3 (Almacenamiento por GB)' },
+      Lambda: { rate: 0.0002, fullName: 'Lambda (Solicitudes / Ejecución)' },
+      CloudFront: { rate: 0.0850, fullName: 'CloudFront (Transferencia CDN GB)' },
+      VPC: { rate: 0.0050, fullName: 'VPC (Red Privada Virtual)' },
+    };
+
+    const newCostItems = formData.services
+      .filter((srv) => serviceRates[srv])
+      .map((srv) => {
+        const info = serviceRates[srv];
+        const monthly = Number((1 * 730 * info.rate).toFixed(2));
+        return {
+          id: `${Date.now()}-${srv}`,
+          service: info.fullName,
+          quantity: 1,
+          hours: 730,
+          ratePerHour: info.rate,
+          monthlyCost: monthly,
+          annualCost: Number((monthly * 12).toFixed(2)),
+        };
+      });
+
+    if (newCostItems.length > 0) {
+      localStorage.setItem('cloud_cost_items', JSON.stringify([...existingCostItems, ...newCostItems]));
+    }
+
     setFormData({
       name: '',
       appType: 'Web Monolítica',
       description: '',
-      region: 'us-east-1 (N. Virginia)',
+      region: 'sa-east-1 (São Paulo) — ~3,455 km',
       users: '',
       availability: '99.9% (Single-AZ)',
       services: [],
       goal: 'Migración Re-hosting (Lift & Shift)',
     });
+  };
+
+  const handleDeleteProposal = (id: string) => {
+    const updated = proposals.filter((p) => p.id !== id);
+    saveProposals(updated);
   };
 
   return (
@@ -107,17 +156,28 @@ export default function Planning() {
 
             <div>
               <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
-                Región seleccionada
+                Región seleccionada (Distancia desde Lima, Perú)
               </label>
               <select
                 value={formData.region}
                 onChange={(e) => setFormData({ ...formData, region: e.target.value })}
                 className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 bg-white"
               >
-                <option>us-east-1 (N. Virginia)</option>
-                <option>us-west-2 (Oregon)</option>
-                <option>sa-east-1 (São Paulo)</option>
-                <option>eu-west-1 (Ireland)</option>
+                <option value="sa-east-1 (São Paulo) — ~3,455 km">
+                  sa-east-1 (São Paulo) — ~3,455 km
+                </option>
+                <option value="us-east-1 (N. Virginia) — ~5,450 km">
+                  us-east-1 (N. Virginia) — ~5,450 km
+                </option>
+                <option value="us-west-2 (Oregon) — ~6,000 km">
+                  us-west-2 (Oregon) — ~6,000 km
+                </option>
+                <option value="eu-west-1 (Ireland) — ~9,850 km">
+                  eu-west-1 (Ireland) — ~9,850 km
+                </option>
+                <option value="ap-northeast-1 (Tokyo) — ~15,490 km">
+                  ap-northeast-1 (Tokyo) — ~15,490 km
+                </option>
               </select>
             </div>
 
@@ -234,9 +294,18 @@ export default function Planning() {
                 <div>
                   <div className="flex justify-between items-start">
                     <h3 className="font-bold text-slate-900 text-lg">{item.name}</h3>
-                    <span className="bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full text-xs font-semibold">
-                      {item.appType}
-                    </span>
+                    <div className="flex items-center space-x-2">
+                      <span className="bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full text-xs font-semibold">
+                        {item.appType}
+                      </span>
+                      <button
+                        onClick={() => handleDeleteProposal(item.id)}
+                        className="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 p-1.5 rounded-lg text-xs font-semibold transition-colors"
+                        title="Borrar propuesta"
+                      >
+                        Eliminar
+                      </button>
+                    </div>
                   </div>
                   <p className="text-xs text-slate-500 mt-2">{item.description}</p>
                 </div>
